@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Asistan - Ollama</title>
+  <style>
+    body { font-family: Arial; margin: 0; background: #f5f5f5; display: flex; }
+    .sidebar {
+      width: 220px;
+      background: #2c3e50;
+      color: white;
+      padding: 20px;
+      height: 100vh;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    }
+    .sidebar h3 { color: #ecf0f1; }
+    .session-link {
+      color: #ecf0f1;
+      cursor: pointer;
+      margin: 5px 0;
+      display: block;
+    }
+    .session-link:hover {
+      text-decoration: underline;
+    }
+    .main {
+      flex-grow: 1;
+      padding: 20px;
+    }
+    .chat-box {
+      background: white; padding: 20px; border-radius: 8px;
+      height: 500px; overflow-y: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .msg { margin: 10px 0; }
+    .user { font-weight: bold; color: #007bff; }
+    .bot { font-weight: bold; color: #28a745; }
+    input { width: 70%; padding: 10px; }
+    button { padding: 10px 15px; }
+    .typing {
+    font-style: italic;
+    color: #999;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+  }
+
+  .typing::after {
+    content: '';
+    display: inline-block;
+    margin-left: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #999;
+    animation: blink 1s infinite ease-in-out;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+  </style>
+</head>
+<body>
+
+  <!-- SOL MENÜ -->
+  <div class="sidebar">
+    <h3>🧠 Sohbetler</h3>
+    <button onclick="newSession()">+ Yeni Sohbet</button>
+    <div id="session-list">
+      {% for sid, history in all_sessions.items() %}
+        {% if history %}
+          <div class="session-link" onclick="switchSession('{{ sid }}')">
+            🗨️ {{ history[-1].user[:15] }}...
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ÜST BUTON: Modeli Eğit -->
+<div style="position: absolute; top: 20px; right: 20px;">
+  <a href="/train_model"><button style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px;">🧠 Modeli Eğit</button></a>
+</div>
+
+  <!-- ANA KISIM -->
+  <div class="main">
+    <h2>🤖 Yapay Zeka Asistanı</h2>
+    <div class="chat-box" id="chat-box">
+      {% for item in history %}
+        <div class="msg"><span class="user">Kullanıcı:</span> {{ item.user }}</div>
+        <div class="msg"><span class="bot">Asistan:</span> {{ item.bot }}</div>
+      {% endfor %}
+    </div>
+    <div style="margin-top: 20px;">
+      <input type="text" id="message" placeholder="Mesajınızı yazın..." />
+      <button id="sendBtn">Gönder</button>
+      <button id="resetBtn">🗑️ Temizle</button>
+    </div>
+  </div>
+
+
+
+  <script>
+    const sendBtn = document.getElementById("sendBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const chatBox = document.getElementById("chat-box");
+    const messageInput = document.getElementById("message");
+  
+    sendBtn.addEventListener("click", function () {
+      const msg = messageInput.value.trim();
+      if (!msg) return;
+  
+      // Kullanıcı mesajı DOM'a ekle (innerHTML yok)
+      const userDiv = document.createElement("div");
+      userDiv.className = "msg";
+      userDiv.innerHTML = `<span class="user">Kullanıcı:</span> ${msg}`;
+      chatBox.appendChild(userDiv);
+  
+      // Yazıyor... satırı DOM'a ekle
+      const typingDiv = document.createElement("div");
+      typingDiv.className = "msg typing";
+      typingDiv.id = "typing";
+      typingDiv.innerText = "Asistan yazıyor";
+      chatBox.appendChild(typingDiv);
+  
+      // Scroll en aşağı
+      chatBox.scrollTop = chatBox.scrollHeight;
+      messageInput.value = "";
+  
+      // API'ye mesaj gönder
+      fetch("/send_message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg })
+      })
+      .then(res => res.json())
+      .then(data => {
+        // Yazıyor satırını sil
+        const typingElem = document.getElementById("typing");
+        if (typingElem) typingElem.remove();
+  
+        // Bot cevabı DOM'a ekle
+        const botDiv = document.createElement("div");
+        botDiv.className = "msg";
+        botDiv.innerHTML = `<span class="bot">Asistan:</span> ${data.response}`;
+        chatBox.appendChild(botDiv);
+  
+        // Scroll en aşağı
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+    });
+  
+    resetBtn.addEventListener("click", function () {
+      fetch("/reset", { method: "POST" })
+        .then(() => location.reload());
+    });
+  
+    function switchSession(sessionId) {
+      fetch("/switch_session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId })
+      })
+      .then(() => location.reload());
+    }
+  
+    function newSession() {
+      const newId = crypto.randomUUID();
+      switchSession(newId);
+    }
+  </script>
+
+</body>
+</html>
