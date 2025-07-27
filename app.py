@@ -63,6 +63,30 @@ def switch_session():
     session['session_id'] = new_sid
     return jsonify({"status": "switched"})
 
+
+@app.route("/train_model", methods=["GET", "POST"])
+def train_model():
+    if request.method == "POST":
+        # Burada fine-tuning işlemi yapılabilir
+        dataset = request.files.get("dataset")
+        model_files = request.files.getlist("model_files")
+        epochs = request.form.get("epochs")
+        batch_size = request.form.get("batch_size")
+        
+        # 💡 Dosyaları ve parametreleri kontrol etmek için log at
+        print("✅ Fine-tune başlatıldı")
+        print("Dataset:", dataset.filename)
+        print("Epochs:", epochs)
+        print("Batch Size:", batch_size)
+        print("Toplam model dosyası:", len(model_files))
+
+        # Burada eğitim işlemini başlatabilirsin
+
+        return "🚀 Model eğitimi başlatıldı!"
+    
+    # Eğer GET isteği gelirse, formu göster
+    return render_template("train_model.html")
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
